@@ -5,14 +5,17 @@ import org.sitenv.vocabularies.loader.VocabularyLoaderFactory;
 import org.sitenv.vocabularies.validation.NodeValidatorFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.config.ServiceLocatorFactoryBean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.support.PropertySourcesPlaceholderConfigurer;
 import org.springframework.core.env.Environment;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
-import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
+//import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseBuilder;
+//import org.springframework.jdbc.datasource.embedded.EmbeddedDatabaseType;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.hibernate4.HibernateExceptionTranslator;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -37,8 +40,24 @@ import java.util.Properties;
 @Configuration
 @ComponentScan("org.sitenv.vocabularies")
 @EnableJpaRepositories("org.sitenv.vocabularies.validation.repositories")
+@PropertySource("classpath:config/db.properties")
 public class CodeValidatorApiConfiguration {
-
+	
+    @Value("${jdbc.driverClassName}")
+    private String dbDriverClass;
+    
+    @Value("${jdbc.url}")
+    private String dbUrl;
+    
+    @Value("${jdbc.username}")
+    private String dbUser;
+    
+    @Value("${jdbc.password}")
+    private String dbPwd;
+    
+    @Value("${jdbc.dialect}")
+    private String dbDialect;
+    
     @Bean
     public EntityManagerFactory entityManagerFactory() {
         HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
@@ -47,11 +66,14 @@ public class CodeValidatorApiConfiguration {
         LocalContainerEntityManagerFactoryBean factory = new LocalContainerEntityManagerFactoryBean();
         factory.setJpaVendorAdapter(vendorAdapter);
         factory.setPackagesToScan("org.sitenv.vocabularies.validation.entities");
+
         Properties jpaProperties = new Properties();
         jpaProperties.put("hibernate.hbm2ddl.auto", "none");
-        jpaProperties.put("hibernate.dialect", "org.hibernate.dialect.HSQLDialect");
+        //jpaProperties.put("hibernate.dialect", "org.hibernate.dialect.HSQLDialect");
+        jpaProperties.put("hibernate.dialect", dbDialect);
         jpaProperties.put("hibernate.format_sql", "true");
         jpaProperties.put("hibernate.show_sql", "false");
+
         factory.setDataSource(dataSource());
         factory.setJpaProperties(jpaProperties);
         factory.afterPropertiesSet();
@@ -70,13 +92,25 @@ public class CodeValidatorApiConfiguration {
         return new HibernateExceptionTranslator();
     }
 
-    @Bean
+/*    @Bean
     public DataSource dataSource() {
         return new EmbeddedDatabaseBuilder()
                 .setType(EmbeddedDatabaseType.HSQL)
                 .addScript("classpath:schema.sql")
                 .build();
     }
+*/    
+    @Bean
+    DataSource dataSource() {
+        DriverManagerDataSource ds = new DriverManagerDataSource();
+        ds.setUrl(dbUrl);
+        ds.setDriverClassName(dbDriverClass);
+        ds.setUsername(dbUser);
+        ds.setPassword(dbPwd);
+
+        return ds;
+    }
+
 
     @Bean
     public static PropertySourcesPlaceholderConfigurer propertyPlaceholderConfigurer() {

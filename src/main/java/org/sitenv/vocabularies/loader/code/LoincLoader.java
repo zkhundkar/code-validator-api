@@ -26,6 +26,8 @@ public class LoincLoader extends BaseCodeLoader implements VocabularyLoader {
     public void load(List<File> filesToLoad, Connection connection) {
         BufferedReader br = null;
         FileReader fileReader = null;
+        boolean okToMove = false;
+        File thisFile = null;
         try {
             StrBuilder insertQueryBuilder = new StrBuilder(codeTableInsertSQLPrefix);
             int totalCount = 0, pendingCount = 0;
@@ -37,6 +39,8 @@ public class LoincLoader extends BaseCodeLoader implements VocabularyLoader {
                     fileReader = new FileReader(file);
                     br = new BufferedReader(fileReader);
                     String available;
+                    thisFile = file;
+                    okToMove = false;
                     while ((available = br.readLine()) != null) {
                         if ((count++ == 0)) {
                             continue; // skip header row
@@ -46,14 +50,15 @@ public class LoincLoader extends BaseCodeLoader implements VocabularyLoader {
                             String code = StringUtils.strip(line[0], "\"");
                             String codeSystem = file.getParentFile().getName();
                             String oid = CodeSystemOIDs.LOINC.codesystemOID();
-                            String longCommonName = StringUtils.strip(line[29], "\"");
+                            String longCommonName = StringUtils.strip(line[28], "\"");
                             String componentName = StringUtils.strip(line[1], "\"");
-                            String shortName = StringUtils.strip(line[23], "\"");
+                            String shortName = StringUtils.strip(line[22], "\"");
 
                             buildCodeInsertQueryString(insertQueryBuilder, code, longCommonName, codeSystem, oid);
                             buildCodeInsertQueryString(insertQueryBuilder, code, componentName, codeSystem, oid);
                             buildCodeInsertQueryString(insertQueryBuilder, code, shortName, codeSystem, oid);
 
+                            pendingCount++;
                             if ((++totalCount % BATCH_SIZE) == 0) {
                                 insertCode(insertQueryBuilder.toString(), connection);
                                 insertQueryBuilder.clear();
@@ -62,20 +67,27 @@ public class LoincLoader extends BaseCodeLoader implements VocabularyLoader {
                             }
                         }
                     }
+                    okToMove = true;
                 }
             }
             if (pendingCount > 0) {
                 insertCode(insertQueryBuilder.toString(), connection);
             }
+            logger.info("Loaded " + Integer.toString(totalCount) + " codes.");
         } catch (IOException e) {
             logger.error(e);
         } catch (SQLException e) {
+        	logger.error(e);
             e.printStackTrace();
         } finally {
             if (br != null) {
                 try {
                     fileReader.close();
                     br.close();
+                    if (okToMove) {
+                    	moveToDone(thisFile);  // Move file to archive folder
+                    	logger.info("Moved " + thisFile.getName() + " to DONE folder");                    	
+                    }
                 } catch (IOException e) {
                     logger.error(e);
                 }

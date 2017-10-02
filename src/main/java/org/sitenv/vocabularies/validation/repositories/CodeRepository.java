@@ -33,4 +33,5 @@ public interface CodeRepository extends JpaRepository<Code, Integer> {
 
     List<Code> findByCodeAndCodeSystemIn(String code, List<String> codesystems);
 
+    //List<Code> findByCodeSystemOidsIn(List<String> codesystemOids);
 }

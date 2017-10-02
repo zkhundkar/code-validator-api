@@ -26,6 +26,8 @@ public class SnomedLoader extends BaseCodeLoader implements VocabularyLoader {
     public void load(List<File> filesToLoad, Connection connection) {
         BufferedReader br = null;
         FileReader fileReader = null;
+        boolean okToMove = false;
+        File thisFile = null;
         try {
             StrBuilder insertQueryBuilder = new StrBuilder(codeTableInsertSQLPrefix);
             int totalCount = 0, pendingCount = 0;
@@ -38,6 +40,8 @@ public class SnomedLoader extends BaseCodeLoader implements VocabularyLoader {
                     fileReader = new FileReader(file);
                     br = new BufferedReader(fileReader);
                     String available;
+                    thisFile = file;
+                    okToMove = false;
                     while ((available = br.readLine()) != null) {
                         if ((count++ == 0)) {
                             continue; // skip header row
@@ -48,6 +52,7 @@ public class SnomedLoader extends BaseCodeLoader implements VocabularyLoader {
 
                             buildCodeInsertQueryString(insertQueryBuilder, code, displayName, codeSystem, CodeSystemOIDs.SNOMEDCT.codesystemOID());
 
+                            pendingCount++;
                             if ((++totalCount % BATCH_SIZE) == 0) {
                                 insertCode(insertQueryBuilder.toString(), connection);
                                 insertQueryBuilder.clear();
@@ -56,6 +61,7 @@ public class SnomedLoader extends BaseCodeLoader implements VocabularyLoader {
                             }
                         }
                     }
+                    okToMove= true;  // Move file to archive folder
                 }
             }
             if (pendingCount > 0) {
@@ -70,6 +76,10 @@ public class SnomedLoader extends BaseCodeLoader implements VocabularyLoader {
                 try {
                     fileReader.close();
                     br.close();
+                    if (okToMove) {
+                    	moveToDone(thisFile);  // Move file to archive folder
+                    	logger.info("Moved " + thisFile.getName() + " to DONE folder");                    	
+                    }                    
                 } catch (IOException e) {
                     logger.error(e);
                 }

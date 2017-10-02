@@ -25,6 +25,8 @@ public abstract class Icd9BaseLoader extends BaseCodeLoader {
     public void load(List<File> filesToLoad, Connection connection) {
         BufferedReader br = null;
         FileReader fileReader = null;
+        boolean okToMove = false;
+        File thisFile = null;
         try {
             StrBuilder insertQueryBuilder = new StrBuilder(codeTableInsertSQLPrefix);
             int totalCount = 0, pendingCount = 0;
@@ -36,12 +38,15 @@ public abstract class Icd9BaseLoader extends BaseCodeLoader {
                     fileReader = new FileReader(file);
                     br = new BufferedReader(fileReader);
                     String line;
+                    thisFile = file;
+                    okToMove = false;
                     while ((line = br.readLine()) != null) {
                         if (!line.isEmpty()) {
                             String code = buildDelimitedIcdCode(line.substring(0, 5));
                             String displayName = line.substring(6);
                             buildCodeInsertQueryString(insertQueryBuilder, code, displayName, codeSystem, oid);
 
+                            pendingCount++;
                             if ((++totalCount % BATCH_SIZE) == 0) {
                                 insertCode(insertQueryBuilder.toString(), connection);
                                 insertQueryBuilder.clear();
@@ -50,6 +55,7 @@ public abstract class Icd9BaseLoader extends BaseCodeLoader {
                             }
                         }
                     }
+                    okToMove = true;  // Move file to archive folder
                 }
             }
             if (pendingCount > 0) {
@@ -64,6 +70,10 @@ public abstract class Icd9BaseLoader extends BaseCodeLoader {
                 try {
                     fileReader.close();
                     br.close();
+                    if (okToMove) {
+                    	moveToDone(thisFile);  // Move file to archive folder
+                    	logger.info("Moved " + thisFile.getName() + " to DONE folder");                    	
+                    }                        
                 } catch (IOException e) {
                     logger.error(e);
                 }

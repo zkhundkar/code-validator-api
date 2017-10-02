@@ -45,6 +45,7 @@ public class VsacLoader extends BaseCodeLoader implements VocabularyLoader {
                         String valueSetSteward = "";
                         int valuesetDataRowCount = 0;
                         String rowlabel = "";
+                        String shortName = "";
 
                         for(Row row : sheet){
                             if ((!headerRowFound) && hasValueInCell(row, 0) && (row.getRowNum()<10)) {
@@ -69,7 +70,11 @@ public class VsacLoader extends BaseCodeLoader implements VocabularyLoader {
 
                             if(headerRowFound && canProcessRow(row)){
                                 preparedStatement.setString(1, row.getCell(0).getStringCellValue().toUpperCase().trim());
-                                preparedStatement.setString(2, row.getCell(1).getStringCellValue().toUpperCase().trim());
+                                shortName = row.getCell(1).getStringCellValue().toUpperCase().trim();
+                                if (shortName.length()>800) {
+                            		shortName = shortName.substring(0, 797) + " ..";
+                                };                                
+                                preparedStatement.setString(2, shortName);
                                 preparedStatement.setString(3, row.getCell(2).getStringCellValue().toUpperCase().trim());
                                 preparedStatement.setString(4, row.getCell(3).getStringCellValue().trim());
                                 preparedStatement.setString(5, row.getCell(4).getStringCellValue().toUpperCase().trim());
@@ -100,6 +105,7 @@ public class VsacLoader extends BaseCodeLoader implements VocabularyLoader {
                         connection.commit();
                     }
                     workBook.close();
+                    moveToDone(file);  // Move file to archive folder
                 } catch (IOException | SQLException e) {
                     logger.error("ERROR loading valueset. " + e.getLocalizedMessage());
                     e.printStackTrace();

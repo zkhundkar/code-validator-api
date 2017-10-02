@@ -22,6 +22,8 @@ public abstract class Icd10BaseLoader extends IcdLoader {
     public void load(List<File> filesToLoad, Connection connection) {
         BufferedReader br = null;
         FileReader fileReader = null;
+        boolean okToMove = false;
+        File thisFile = null;
         try {
             StrBuilder insertQueryBuilder = new StrBuilder(codeTableInsertSQLPrefix);
             int totalCount = 0, pendingCount = 0;
@@ -33,6 +35,8 @@ public abstract class Icd10BaseLoader extends IcdLoader {
                     fileReader = new FileReader(file);
                     br = new BufferedReader(fileReader);
                     String available;
+                    thisFile = file;
+                    okToMove = false;
                     while ((available = br.readLine()) != null) {
                         String code = buildDelimitedIcdCode(available.substring(6, 13));
                         String shortDisplayName = available.substring(16, 77);
@@ -40,7 +44,7 @@ public abstract class Icd10BaseLoader extends IcdLoader {
 
                         buildCodeInsertQueryString(insertQueryBuilder, code, shortDisplayName, codeSystem, oid);
                         buildCodeInsertQueryString(insertQueryBuilder, code, longDisplayName, codeSystem, oid);
-
+                        pendingCount++;
                         if ((++totalCount % BATCH_SIZE) == 0) {
                             insertCode(insertQueryBuilder.toString(), connection);
                             insertQueryBuilder.clear();
@@ -48,7 +52,7 @@ public abstract class Icd10BaseLoader extends IcdLoader {
                             pendingCount = 0;
                         }
                     }
-
+                    okToMove = true;  // Move file to archive folder
                 }
             }
             if (pendingCount > 0) {
@@ -63,6 +67,10 @@ public abstract class Icd10BaseLoader extends IcdLoader {
                 try {
                     fileReader.close();
                     br.close();
+                    if (okToMove) {
+                    	moveToDone(thisFile);  // Move file to archive folder
+                    	logger.info("Moved " + thisFile.getName() + " to DONE folder");                    	
+                    }    
                 } catch (IOException e) {
                     logger.error(e);
                 }

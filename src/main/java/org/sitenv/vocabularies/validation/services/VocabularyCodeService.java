@@ -1,6 +1,7 @@
 package org.sitenv.vocabularies.validation.services;
 
 import org.sitenv.vocabularies.validation.entities.Code;
+import org.sitenv.vocabularies.validation.entities.VsacValueSet;
 import org.sitenv.vocabularies.validation.repositories.CodeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,10 @@ public class VocabularyCodeService {
     public VocabularyCodeService(CodeRepository codeRepository) {
         this.codeRepository = codeRepository;
     }
+
+   // public List<Code> getCodesByOids(List<String> codesystemOids){
+   //     return codeRepository.findByCodeSystemOidsIn(new ArrayList<>(codesystemOids));
+   // }
 
     public boolean isFoundByCodeAndDisplayNameInCodeSystems(String code, String displayName, Set<String> codeSystems){
         String cleanedCode = code.trim().toUpperCase();

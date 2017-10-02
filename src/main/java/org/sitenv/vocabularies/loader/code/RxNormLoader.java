@@ -26,6 +26,8 @@ public class RxNormLoader extends BaseCodeLoader implements VocabularyLoader {
     public void load(List<File> filesToLoad, Connection connection) {
         FileReader fileReader = null;
         BufferedReader br = null;
+        boolean okToMove = false;
+        File thisFile = null;
         try {
             StrBuilder insertQueryBuilder = new StrBuilder(codeTableInsertSQLPrefix);
             int totalCount = 0, pendingCount = 0;
@@ -37,13 +39,15 @@ public class RxNormLoader extends BaseCodeLoader implements VocabularyLoader {
                     fileReader = new FileReader(file);
                     br = new BufferedReader(fileReader);
                     String available;
+                    thisFile = file;
+                    okToMove = false;
                     while ((available = br.readLine()) != null) {
                         String[] line = StringUtils.splitPreserveAllTokens(available, "|", 16);
                         String code = line[0];
-                        String displayName = line[14];
+                        String displayName = StringUtils.strip(line[14], "\\");
 
                         buildCodeInsertQueryString(insertQueryBuilder, code, displayName, codeSystem, CodeSystemOIDs.RXNORM.codesystemOID());
-
+                        pendingCount++;
                         if ((++totalCount % BATCH_SIZE) == 0) {
                             insertCode(insertQueryBuilder.toString(), connection);
                             insertQueryBuilder.clear();
@@ -51,6 +55,8 @@ public class RxNormLoader extends BaseCodeLoader implements VocabularyLoader {
                             pendingCount = 0;
                         }
                     }
+                    okToMove = true;  // Move file to archive folder
+                    logger.info("Loaded " + Integer.toString(totalCount) + " codes.");
                 }
             }
             if (pendingCount > 0) {
@@ -59,12 +65,17 @@ public class RxNormLoader extends BaseCodeLoader implements VocabularyLoader {
         } catch (IOException e) {
             logger.error(e);
         } catch (SQLException e) {
+            logger.error(e);        	
             e.printStackTrace();
         } finally {
             if (br != null) {
                 try {
                     fileReader.close();
                     br.close();
+                    if (okToMove) {
+                    	moveToDone(thisFile);  // Move file to archive folder
+                    	logger.info("Moved " + thisFile.getName() + " to DONE folder");                    	
+                    }
                 } catch (IOException e) {
                     logger.error(e);
                 }

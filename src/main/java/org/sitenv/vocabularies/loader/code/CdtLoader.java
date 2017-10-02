@@ -26,6 +26,8 @@ import java.util.List;
     public void load(List<File> filesToLoad, Connection connection) {
         StrBuilder insertQueryBuilder = null;
         String insertQueryPrefix = codeTableInsertSQLPrefix;
+        boolean okToMove = false;
+
         for (File file : filesToLoad) {
             if (file.isFile() && !file.isHidden()) {
                 String codeSystem = file.getParentFile().getName();
@@ -59,6 +61,7 @@ import java.util.List;
                         }
                         insertCode(insertQueryBuilder.toString(), connection);
                     }
+                    okToMove = true;  // Move file to archive folder
                 } catch (IOException e) {
                     logger.error(e);
                 } catch (SQLException e) {
@@ -71,6 +74,10 @@ import java.util.List;
                         if(inputStream != null) {
                             inputStream.close();
                         }
+                        if (okToMove) {
+                        	moveToDone(file);  // Move file to archive folder
+                        	logger.info("Moved " + file.getName() + " to DONE folder");                    	
+                        }                           
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
